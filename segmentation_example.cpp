@@ -7,7 +7,9 @@
 #include <CGAL/bounding_box.h>
 #include <CGAL/tags.h>
 #include <CGAL/IO/read_points.h>
+#include <CGAL/IO/read_las_points.h>
 #include <CGAL/IO/write_ply_points.h>
+#include <CGAL/IO/write_las_points.h>
 #include <CGAL/Real_timer.h>
 #include <cstdlib>
 #include <fstream>
@@ -34,12 +36,12 @@ typedef Classification::Feature::Vertical_dispersion<Kernel, Point_range, Pmap> 
 
 void write_ply(
 	std::vector<Point>& pts,
-	std::string& fileName,
-	Label_handle& ground,
-	Label_handle& vegetation,
-	Label_handle& roof,
-	std::vector<int>& label_indices,
-	Label_set& labels)
+	const std::string& fileName,
+	const Label_handle& ground,
+	const Label_handle& vegetation,
+	const Label_handle& roof,
+	const std::vector<int>& label_indices,
+	const Label_set& labels)
 {
 
 	std::vector<unsigned char> red, green, blue;
@@ -74,6 +76,7 @@ void write_ply(
 	}
 	std::ofstream f(fileName, std::ios::binary);
 	CGAL::IO::set_binary_mode(f);
+
 	CGAL::IO::write_PLY_with_properties(f, CGAL::make_range(boost::counting_iterator<std::size_t>(0), boost::counting_iterator<std::size_t>(pts.size())),
 		CGAL::make_ply_point_writer(CGAL::make_property_map(pts)),
 		std::make_pair(CGAL::make_property_map(red), CGAL::PLY_property<unsigned char>("red")),
@@ -81,6 +84,59 @@ void write_ply(
 		std::make_pair(CGAL::make_property_map(blue), CGAL::PLY_property<unsigned char>("blue")));
 	f.close();
 }
+
+void write_las(
+	std::vector<Point>& pts,
+	const std::string& fileName,
+	const Label_handle& ground,
+	const Label_handle& vegetation,
+	const Label_handle& roof,
+	const std::vector<int>& label_indices,
+	const Label_set& labels)
+{
+
+	std::vector<unsigned char> red, green, blue;
+	red.reserve(pts.size());
+	green.reserve(pts.size());
+	blue.reserve(pts.size());
+	for (std::size_t i = 0; i < pts.size(); ++i)
+	{
+		Label_handle label = labels[static_cast<std::size_t>(label_indices[i])];
+		unsigned r = 0, g = 0, b = 0;
+		if (label == ground)
+		{
+			r = 245;
+			g = 180;
+			b = 0;
+		}
+		else if (label == vegetation)
+		{
+			r = 0;
+			g = 255;
+			b = 27;
+		}
+		else if (label == roof)
+		{
+			r = 255;
+			g = 0;
+			b = 170;
+		}
+		red.push_back(r);
+		green.push_back(g);
+		blue.push_back(b);
+	}
+	std::ofstream f(fileName, std::ios::binary);
+	CGAL::IO::set_binary_mode(f);
+
+	CGAL::IO::write_LAS_with_properties(f, CGAL::make_range(boost::counting_iterator<std::size_t>(0), boost::counting_iterator<std::size_t>(pts.size())),
+		CGAL::make_las_point_writer(CGAL::make_property_map(pts)),
+		std::make_pair(CGAL::make_property_map(red), CGAL::LAS_property<unsigned char>("red")),
+		std::make_pair(CGAL::make_property_map(green), CGAL::LAS_property<unsigned char>("green")),
+		std::make_pair(CGAL::make_property_map(blue), CGAL::LAS_property<unsigned char>("blue")));
+	
+	f.close();
+}
+
 
 int main(int argc, char** argv)
 {
@@ -159,8 +215,10 @@ int main(int argc, char** argv)
 	std::cerr << "Raw classification performed in " << t.time() << " second(s)" << std::endl;
 	t.reset();
 
-	std::string output_filename = "classification_raw.ply";
-	write_ply(pts, output_filename, ground, vegetation, roof, label_indices, labels);
+	//std::string output_filename = "classification_raw.ply";
+	//write_ply(pts, output_filename, ground, vegetation, roof, label_indices, labels);
+	std::string output_filename = "classification_raw.laz";
+	write_las(pts, output_filename, ground, vegetation, roof, label_indices, labels);
 
 	t.start();
 	Classification::classify_with_local_smoothing<CGAL::Parallel_if_available_tag>(pts, Pmap(), labels, classifier,
@@ -177,8 +235,11 @@ int main(int argc, char** argv)
 	std::cerr << "Classification with graphcut performed in " << t.time() << " second(s)" << std::endl;*/
 	// Save the output in a colored PLY format
 
-	output_filename = "classification_smoothed.ply";
-	write_ply(pts, output_filename, ground, vegetation, roof, label_indices, labels);
+	//output_filename = "classification_smoothed.ply";
+	output_filename = "classification_smoothed.laz";
+	write_las(pts, output_filename, ground, vegetation, roof, label_indices, labels);
+
+	//write_ply(pts, output_filename, ground, vegetation, roof, label_indices, labels);
 
 	std::cerr << "All done" << std::endl;
 	return EXIT_SUCCESS;
