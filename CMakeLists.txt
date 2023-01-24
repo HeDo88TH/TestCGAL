@@ -1,23 +1,18 @@
-
 project (TestCGAL)
+
 cmake_minimum_required(VERSION 3.9)
 
-add_definitions(-DCGAL_LINKED_WITH_LASLIB)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-message(STATUS "${CMAKE_MODULE_PATH}")
-
-find_package(LASlib REQUIRED)
-find_package(OpenMP)
-find_package(TBB CONFIG REQUIRED)
 find_package(CGAL CONFIG REQUIRED)
+find_package(TBB CONFIG REQUIRED)
 
 include(CGAL_TBB_support)
 
 add_executable(TestCGAL segmentation_example.cpp)
 
-target_link_libraries(TestCGAL PUBLIC TBB::tbb CGAL::TBB_support CGAL::LASLIB_support LASlib)
+target_link_libraries(TestCGAL PRIVATE TBB::tbb)
+target_link_libraries(TestCGAL PRIVATE CGAL::TBB_support)
 
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(TestCGAL PUBLIC OpenMP::OpenMP_CXX)
-endif()
 
